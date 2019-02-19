@@ -2,7 +2,6 @@ import requests, base64, json
 import csv
 from requests.auth import HTTPBasicAuth
 
-
 url = 'https://api.spotify.com/v1/audio-features/'
 token = 'BQBYmDLNnT2SsfwOnQjfqw7mipww1JaJVe9P-SacTX571U3Yl93ssFPbtxcayXHM5PQNRe2oEGdhfbvGE-9YCcOL9T1l7zEhRCVkbKREJlV9oFLTzLlQffxePijtNjmaXEG7OpNZVS-NUqNA5Im-CSepokK7e8yViozOZ6hajVKOq_2_FpwKskEZ4sem8S9J6LzvdY00NqHzCf2G3ZUQ-svh_xvv6psOFxo_8zOFWSIBMD95L_QteQ1F3MJs3RYpYACNLakRTMUwmw'#
 headers = { 'Authorization': 'Bearer ' + token }

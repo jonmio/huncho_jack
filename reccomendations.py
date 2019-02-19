@@ -7,6 +7,7 @@ import numpy as np
 from sklearn import preprocessing
 import pdb
 from sklearn.neighbors import NearestNeighbors
+import sys
 
 def traverse(song_index, visited, df, df_filtered, curr):
     if len(curr) == 20:
@@ -44,7 +45,7 @@ def find_song_index_from_title(song_title, df):
     if song_index == -1:
         raise Exception("Could not locate song title.")
 
-def get_reccomendations(song_index, df, KNN_engine, degree_of_similarity):
+def get_reccomendations(song_index, df, KNN_engine, degree_of_similarity, token):
     dists, reccomended_ids = neigh.kneighbors([df_filtered.iloc[song_index].tolist()])
     dists = dists[0]
     reccomended_ids = reccomended_ids[0]
@@ -52,7 +53,6 @@ def get_reccomendations(song_index, df, KNN_engine, degree_of_similarity):
 
 
     url = 'https://api.spotify.com/v1/tracks/'
-    token = 'BQDRBsigDvWzbetW3F7KABfWq_xaBfL1Q1OHpbozS0_B56MIZvNbV7dtDgV53JWQQ1g0sejawku2tY_dofYdFu84_Jagk2YMkIVvK_aXJiyDHlD5qLMu7PwBljc_GNh02-FKLKA1_BudSB7kEsRsawXwj6eHwbVJ3DSBX7a17yQYzuiSsth67qI7yc0GSOKWD0gEQeWGjrqzYKTN_TnonPxTlR0vltqOnGc1sJbKhdlSrlzRCkhuQ7xdk-YjLffxVZPCnTUk_xmHIA'#
     headers = { 'Authorization': 'Bearer ' + token}
 
     song1_id = df.at[song_index, 'id']
@@ -68,6 +68,7 @@ def get_reccomendations(song_index, df, KNN_engine, degree_of_similarity):
         artist1_genres = res['genres']
     else:
         raise Exception('Request failed')
+    pdb.set_trace()
 
     reccomended_song_ids = [df.at[i, 'id'] for i in reccomended_ids]
     ids = ",".join(reccomended_song_ids)
@@ -88,7 +89,7 @@ def get_reccomendations(song_index, df, KNN_engine, degree_of_similarity):
             artist1_genres.remove('pop')
             artist2_genres.remove('pop')
 
-        if len(artist1_genres) + len(artist2_genres) - len(set(artist1_genres + artist2_genres)) >= degree_of_similarity :
+        if len(artist1_genres) + len(artist2_genres) - len(set(artist1_genres + artist2_genres)) >= degree_of_similarity or not artist1_genres or not artist2_genres:
             print("Added : ", df.at[id, 'name'], df.at[id, 'artist'])
             final_reccomend.append(id)
         else:
@@ -96,17 +97,28 @@ def get_reccomendations(song_index, df, KNN_engine, degree_of_similarity):
 
     return final_reccomend
 
-def add_reccomendations_to_playlist(song_ids):
-    for id in song_ids:
-        pass
+def add_reccomendations_to_playlist(song_ids, df, token):
+    req_body = {}
+    headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': "application/json"}
+    url = 'https://api.spotify.com/v1/users/jonmio/playlists/'
+    req_body['name'] = "Test API " + sys.argv[1]
+    req_body['description'] = "Testing Custom Playlist " + sys.argv[1]
+    req_body['public'] = False
+    res = requests.post(url, data=json.dumps(req_body), headers=headers)
+    if res.status_code != 200 and res.status_code != 201:
+        raise Exception("Failed to create playlist")
+    playlist_id = res.json()['id']
+    song_uris = ",".join([df.at[id, 'uri'] for id in song_ids])
+    url = 'https://api.spotify.com/v1/playlists/' + playlist_id + '/tracks?uris=' + song_uris
+    requests.post(url, headers=headers)
+
 
 df = pd.read_csv("./songs_in_spotify_library.csv")
-
 neigh = NearestNeighbors(n_neighbors=50)
 df_filtered = build_featurized_df(df)
 neigh.fit(df_filtered.values)
 
-song_title = "Stairway"
+song_title = sys.argv[1]
 song_index = find_song_index_from_title(song_title, df)
 
 # genres = [
@@ -115,10 +127,10 @@ song_index = find_song_index_from_title(song_title, df)
 #     set(["rap", "hip hop", "hip-hop"])
 # ]
 
-degree_of_similarity = 2
-
-reccomendations = get_reccomendations(song_index, df, neigh, degree_of_similarity)
-add_reccomendations_to_playlist(reccomendations)
+degree_of_similarity = 1
+token = 'BQCugV-hzfr5yiYvYFvVIkvoiXXhJ7U164WI_09wdwuqq6noY3zmyXEAcNSNzLA6VT9bi_DeNZmxdPqiV5hgUz2VwyUdolUxTUmeHBX4ILseDOZ4JgpPACTV8Zn5xNzZU40knTboVdXy-cSVxQWrj-ji3y3kg7C-ZDLie0wsx3YgsprVJE9PX_VHig2JFm86QxDMYojq0PsDcSL7EwuqOTAUe-HCNKEcv-jco7-8GA5O8xwaJYZLt75-76_ZKspcQ3MHNxuInDVdJg'#
+reccomendations = get_reccomendations(song_index, df, neigh, degree_of_similarity, token)
+add_reccomendations_to_playlist(reccomendations, df, token)
 
 # # for _ in range(10):
 # visited = set()
