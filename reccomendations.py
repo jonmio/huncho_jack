@@ -68,7 +68,6 @@ def get_reccomendations(song_index, df, KNN_engine, degree_of_similarity, token)
         artist1_genres = res['genres']
     else:
         raise Exception('Request failed')
-    pdb.set_trace()
 
     reccomended_song_ids = [df.at[i, 'id'] for i in reccomended_ids]
     ids = ",".join(reccomended_song_ids)
@@ -128,7 +127,9 @@ song_index = find_song_index_from_title(song_title, df)
 # ]
 
 degree_of_similarity = 1
-token = 'BQCugV-hzfr5yiYvYFvVIkvoiXXhJ7U164WI_09wdwuqq6noY3zmyXEAcNSNzLA6VT9bi_DeNZmxdPqiV5hgUz2VwyUdolUxTUmeHBX4ILseDOZ4JgpPACTV8Zn5xNzZU40knTboVdXy-cSVxQWrj-ji3y3kg7C-ZDLie0wsx3YgsprVJE9PX_VHig2JFm86QxDMYojq0PsDcSL7EwuqOTAUe-HCNKEcv-jco7-8GA5O8xwaJYZLt75-76_ZKspcQ3MHNxuInDVdJg'#
+token = 'BQAFBC-U2TpX9C00wfhent8hYwKIyscvtvRKn78fjLR6K73OSQ6e1SHA7fL8U6dFBXGF86CqkIHxt2LRaYHsYb8pflDmh94uxys5cjWfJvRb1r7qOUiZWivH5str4ZlEnJHbS8vbNRnBMjz-fDtacJenbCxGJxv-4_Uzqq96FgobtzGOEXCrPp28sHdask6JTZytEM6sljb7F_isi3fR1cZhwWhJ9DzAidHLiLvdtc76Jdi_cTaF9EErX7-St1DWZfEQGSOQk4Amqw'#
+if len(sys.argv) > 2 and sys.argv[2]:
+    token = sys.argv[2]
 reccomendations = get_reccomendations(song_index, df, neigh, degree_of_similarity, token)
 add_reccomendations_to_playlist(reccomendations, df, token)
 
