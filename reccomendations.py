@@ -45,15 +45,19 @@ def get_reccomendations(song_index, df, KNN_engine, MIN_COMMON_SONGS, token):
     res = requests.get(url + song1_id, headers=headers)
     if res.status_code == 200:
         res = res.json()
-        artist1_id = res['artists'][0]['id']
+        artist1_id = map(lambda artist: artist['id'], res['artists'])
     else:
         raise Exception('Request failed')
-    res = requests.get('https://api.spotify.com/v1/artists/' + artist1_id, headers=headers)
-    if res.status_code == 200:
-        res = res.json()
-        artist1_genres = res['genres']
-    else:
-        raise Exception('Request failed')
+
+    artist1_genres = set()
+
+    for artist in artist1_id:
+        res = requests.get('https://api.spotify.com/v1/artists/' + artist, headers=headers)
+        if res.status_code == 200:
+            res = res.json()
+            artist1_genres.update(res['genres'])
+        else:
+            raise Exception('Request failed')
 
     reccomended_song_ids = [df.at[i, 'id'] for i in reccomended_ids]
     ids = ",".join(reccomended_song_ids)
@@ -69,12 +73,12 @@ def get_reccomendations(song_index, df, KNN_engine, MIN_COMMON_SONGS, token):
         if res.status_code != 200:
             raise Exception('Request failed')
         res = res.json()
-        artist2_genres = res['genres']
+        artist2_genres = set(res['genres'])
         if 'pop' in artist1_genres and 'pop' in artist2_genres:
             artist1_genres.remove('pop')
             artist2_genres.remove('pop')
 
-        if len(artist1_genres) + len(artist2_genres) - len(set(artist1_genres + artist2_genres)) >= MIN_COMMON_SONGS or not artist1_genres or not artist2_genres:
+        if len(artist1_genres.intersection(artist2_genres)) >= MIN_COMMON_SONGS or not artist1_genres or not artist2_genres:
             print("Added : ", df.at[id, 'name'], df.at[id, 'artist'])
             final_reccomend.append(id)
         else:
