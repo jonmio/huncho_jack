@@ -65,15 +65,17 @@ def get_reccomendations(song_index, df, KNN_engine, MIN_COMMON_SONGS, token):
     if res.status_code != 200:
         raise Exception('Request failed')
     res = res.json()
-    artist_ids = [track['artists'][0]['id'] for track in res['tracks']]
+    artist_ids = [map(lambda artist: artist['id'], track['artists']) for track in res['tracks']]
 
     for i, (dist, id) in enumerate(zip(dists, reccomended_ids)):
         artist2_id = artist_ids[i]
-        res = requests.get('https://api.spotify.com/v1/artists/' + artist2_id, headers=headers)
-        if res.status_code != 200:
-            raise Exception('Request failed')
-        res = res.json()
-        artist2_genres = set(res['genres'])
+        artist2_genres = set()
+        for artist in artist2_id:
+            res = requests.get('https://api.spotify.com/v1/artists/' + artist, headers=headers)
+            if res.status_code != 200:
+                raise Exception('Request failed')
+            res = res.json()
+            artist2_genres.update(res['genres'])
         if 'pop' in artist1_genres and 'pop' in artist2_genres:
             artist1_genres.remove('pop')
             artist2_genres.remove('pop')
