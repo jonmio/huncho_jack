@@ -8,24 +8,10 @@ from sklearn import preprocessing
 import pdb
 from sklearn.neighbors import NearestNeighbors
 import sys
+import auth
 
-def traverse(song_index, visited, df, df_filtered, curr):
-    if len(curr) == 20:
-        return
-    if song_index not in visited:
-        visited.add(song_index)
-        curr.append(song_index)
-
-        dists, reccomended_ids = neigh.kneighbors([df_filtered.iloc[song_index].tolist()])
-        dists = dists[0]
-        reccomended_ids = reccomended_ids[0]
-        for dist, id in zip(dists, reccomended_ids):
-            song1_qualities = df_filtered.iloc[song_index]
-            song2_qualities = df_filtered.iloc[id]
-            diff = [abs(q1 - q2) <= 1.5 for (q1,q2) in zip(song1_qualities, song2_qualities)]
-            # if False in diff:
-            #     continue
-            traverse(id, visited, df, df_filtered, curr)
+MIN_COMMON_SONGS = 1
+token = auth.get_access_token()
 
 def build_featurized_df(df):
     filtered_cols = ['duration_ms', 'time_signature', 'key', 'mode']
@@ -40,12 +26,12 @@ def build_featurized_df(df):
 def find_song_index_from_title(song_title, df):
     song_index = -1
     for i, row in df.iterrows():
-        if song_title in row['name']:
+        if song_title == row['name']:
             return i
     if song_index == -1:
         raise Exception("Could not locate song title.")
 
-def get_reccomendations(song_index, df, KNN_engine, degree_of_similarity, token):
+def get_reccomendations(song_index, df, KNN_engine, MIN_COMMON_SONGS, token):
     dists, reccomended_ids = neigh.kneighbors([df_filtered.iloc[song_index].tolist()])
     dists = dists[0]
     reccomended_ids = reccomended_ids[0]
@@ -88,7 +74,7 @@ def get_reccomendations(song_index, df, KNN_engine, degree_of_similarity, token)
             artist1_genres.remove('pop')
             artist2_genres.remove('pop')
 
-        if len(artist1_genres) + len(artist2_genres) - len(set(artist1_genres + artist2_genres)) >= degree_of_similarity or not artist1_genres or not artist2_genres:
+        if len(artist1_genres) + len(artist2_genres) - len(set(artist1_genres + artist2_genres)) >= MIN_COMMON_SONGS or not artist1_genres or not artist2_genres:
             print("Added : ", df.at[id, 'name'], df.at[id, 'artist'])
             final_reccomend.append(id)
         else:
@@ -100,8 +86,8 @@ def add_reccomendations_to_playlist(song_ids, df, token):
     req_body = {}
     headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': "application/json"}
     url = 'https://api.spotify.com/v1/users/jonmio/playlists/'
-    req_body['name'] = "Test API " + sys.argv[1]
-    req_body['description'] = "Testing Custom Playlist " + sys.argv[1]
+    req_body['name'] = "\\Playlist based on " + sys.argv[1]
+    req_body['description'] = "Reccomendations from a python script based on " + sys.argv[1]
     req_body['public'] = False
     res = requests.post(url, data=json.dumps(req_body), headers=headers)
     if res.status_code != 200 and res.status_code != 201:
@@ -113,84 +99,10 @@ def add_reccomendations_to_playlist(song_ids, df, token):
 
 
 df = pd.read_csv("./songs_in_spotify_library.csv")
-neigh = NearestNeighbors(n_neighbors=50)
+neigh = NearestNeighbors(n_neighbors=50, n_jobs=-1)
 df_filtered = build_featurized_df(df)
 neigh.fit(df_filtered.values)
-
 song_title = sys.argv[1]
 song_index = find_song_index_from_title(song_title, df)
-
-# genres = [
-#     set(["rock", "alternative", "grunge", "metal", "classic rock"]),
-#     set(["house", "bass house", "edm", "dubstep", "electronic"]),
-#     set(["rap", "hip hop", "hip-hop"])
-# ]
-
-degree_of_similarity = 1
-token = 'BQAFBC-U2TpX9C00wfhent8hYwKIyscvtvRKn78fjLR6K73OSQ6e1SHA7fL8U6dFBXGF86CqkIHxt2LRaYHsYb8pflDmh94uxys5cjWfJvRb1r7qOUiZWivH5str4ZlEnJHbS8vbNRnBMjz-fDtacJenbCxGJxv-4_Uzqq96FgobtzGOEXCrPp28sHdask6JTZytEM6sljb7F_isi3fR1cZhwWhJ9DzAidHLiLvdtc76Jdi_cTaF9EErX7-St1DWZfEQGSOQk4Amqw'#
-if len(sys.argv) > 2 and sys.argv[2]:
-    token = sys.argv[2]
-reccomendations = get_reccomendations(song_index, df, neigh, degree_of_similarity, token)
+reccomendations = get_reccomendations(song_index, df, neigh, MIN_COMMON_SONGS, token)
 add_reccomendations_to_playlist(reccomendations, df, token)
-
-# # for _ in range(10):
-# visited = set()
-# curr = []
-# traverse(song_index, visited, df, df_filtered, curr)
-# print("Playlist:")
-# for id in curr:
-#     print(df.at[id, 'name'], df.at[id, 'artist'], id)
-# print("\n")
-# print("\n")
-    #
-    # # print(df.at[song_index, 'name'], df.at[song_index, 'artist'])
-    #
-    #
-    # dists, reccomended_ids = neigh.kneighbors([df_filtered.iloc[song_index].tolist()])
-    # dists = dists[0]
-    # reccomended_ids = reccomended_ids[0]
-    # print("Reccomandations:")
-    # for dist, id in zip(dists, reccomended_ids):
-    #     song1_qualities = df_filtered.iloc[song_index]
-    #     song2_qualities = df_filtered.iloc[id]
-    #     diff = [abs(q1 - q2) <= 1.5 for (q1,q2) in zip(song1_qualities, song2_qualities)]
-    #     if False in diff:
-    #         continue
-    #     print(df.at[id, 'name'], df.at[id, 'artist'], id)
-    # print("\n")
-    # print("\n")
-
-# # d = defaultdict(list)
-# # for i,elem in enumerate(cluster_indices):
-# #     d[elem].append((df.at[i, 'name'], df.at[i, 'artist']))
-# # for key in d:
-# #     for elem in d[key]:
-# #         print(elem[:50])
-# #     print("************")
-# #     print("***********")
-#
-#
-# print(neigh.kneighbors([[1., 1., 1.]]))
-# (array([[0.5]]), array([[2]]))
-#
-# distorsions = []
-# for k in nge(3, 1000, 20):
-#     kmeans = KMeans(n_clusters=k)
-#     kmeans.fit(X)
-#     distorsions.append(kmeans.inertia_)
-#
-# fig = plt.figure(figsize=(15, 5))
-# plt.plot(range(3, 1000,20), distorsions)
-# plt.grid(True)
-# plt.title('Elbow curve')
-# plt.show()
-
-# cluster_indices = KMeans(n_clusters=100,n_init=1000,init='random').fit_predict(df_filtered.values)
-# d = defaultdict(list)
-# for i,elem in enumerate(cluster_indices):
-#     d[elem].append((df.at[i, 'name'], df.at[i, 'artist']))
-# for key in d:
-#     for elem in d[key]:
-#         print(elem[:50])
-#     print("************")
-#     print("***********")
